@@ -405,6 +405,28 @@ if referrer:
         call.from_user.id
         )
         )
+        @bot.message_handler(commands=['users'])
+def users_list(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    users = get_users()
+
+    text = "👥 Users List\n\n"
+
+    for u in users:
+        text += f"""
+🆔 {u[0]}
+👤 @{u[1]}
+💰 ${u[2]}
+
+"""
+
+    bot.send_message(
+        message.chat.id,
+        text
+    )
         except:
             pass
 
