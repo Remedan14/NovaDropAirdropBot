@@ -194,3 +194,15 @@ def get_users():
     )
 
     return cursor.fetchall()
+def get_withdrawal(wid):
+
+    cursor.execute(
+        """
+        SELECT user_id, amount
+        FROM withdrawals
+        WHERE id=?
+        """,
+        (wid,)
+    )
+
+    return cursor.fetchone()
