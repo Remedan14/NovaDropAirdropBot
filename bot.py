@@ -462,11 +462,64 @@ Fakkeenya:
 /addbalance 123456789 5
 """
     )
-        except:
-            pass
+    @bot.message_handler(commands=['removebalance'])
+def remove_user_balance(message):
 
+    if message.from_user.id != ADMIN_ID:
+        return
 
-    bot.send_message(
-        message.chat.id,
-        "✅ Broadcast sent"
-)
+    try:
+        parts = message.text.split()
+
+        user_id = int(parts[1])
+        amount = float(parts[2])
+
+        add_balance(
+            user_id,
+            -amount
+        )
+
+        bot.send_message(
+            message.chat.id,
+            f"✅ ${amount} removed from user {user_id}"
+        )
+
+    except:
+
+        bot.send_message(
+            message.chat.id,
+            """
+if action=="approve":
+
+    data = get_withdrawal(wid)
+
+    if data:
+
+        user_id = data[0]
+        amount = data[1]
+
+        add_balance(
+            user_id,
+            -amount
+        )
+
+        update_withdrawal(
+            wid,
+            "approved"
+        )
+
+        bot.send_message(
+            user_id,
+            f"""
+✅ Your withdrawal approved
+
+💸 Amount:
+${amount}
+"""
+        )
+
+        bot.send_message(
+            call.message.chat.id,
+            "✅ Approved and balance updated"
+        )
+
