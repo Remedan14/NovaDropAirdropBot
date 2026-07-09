@@ -77,7 +77,56 @@ def save_wallet(user_id, usdt, btc):
     )
 
     db.commit()
+def add_withdrawal(user_id, amount):
 
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS withdrawals(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        amount REAL,
+        status TEXT DEFAULT 'pending'
+        )
+        """
+    )
+
+    cursor.execute(
+        """
+        INSERT INTO withdrawals(user_id, amount)
+        VALUES(?,?)
+        """,
+        (user_id, amount)
+    )
+
+    db.commit()
+
+
+
+def get_pending_withdrawals():
+
+    cursor.execute(
+        """
+        SELECT * FROM withdrawals
+        WHERE status='pending'
+        """
+    )
+
+    return cursor.fetchall()
+
+
+
+def update_withdrawal(wid, status):
+
+    cursor.execute(
+        """
+        UPDATE withdrawals
+        SET status=?
+        WHERE id=?
+        """,
+        (status,wid)
+    )
+
+    db.commit()
 
 def get_all_users():
 
