@@ -210,3 +210,76 @@ def withdraw(message):
 print("NovaDrop Bot Started")
 
 bot.infinity_polling()
+@bot.message_handler(func=lambda m:m.text=="💳 Wallet")
+def wallet(message):
+
+    bot.send_message(
+        message.chat.id,
+        """
+Wallet galchi:
+
+Fakkeenya:
+
+USDT: Txxxxxxxxxx
+BTC: bc1xxxxxxxx
+"""
+    )
+
+    bot.register_next_step_handler(
+        message,
+        save_wallet_data
+    )
+
+
+def save_wallet_data(message):
+
+    lines = message.text.split("\n")
+
+    usdt = ""
+    btc = ""
+
+    for line in lines:
+        if "USDT" in line:
+            usdt = line.replace("USDT:","").strip()
+
+        if "BTC" in line:
+            btc = line.replace("BTC:","").strip()
+
+
+    save_wallet(
+        message.from_user.id,
+        usdt,
+        btc
+    )
+
+    bot.send_message(
+        message.chat.id,
+        "✅ Wallet saved successfully"
+        )
+    @bot.message_handler(commands=['broadcast'])
+def broadcast(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    msg = message.text.replace(
+        "/broadcast ",
+        ""
+    )
+
+    users = get_all_users()
+
+    for user in users:
+        try:
+            bot.send_message(
+                user[0],
+                msg
+            )
+        except:
+            pass
+
+
+    bot.send_message(
+        message.chat.id,
+        "✅ Broadcast sent"
+)
