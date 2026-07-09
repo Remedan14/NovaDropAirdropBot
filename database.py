@@ -172,3 +172,25 @@ def set_referral_reward(user_id):
         WHERE id=?
         """,
         (user_id,)
+        def add_balance(user_id, amount):
+
+    cursor.execute(
+        """
+        UPDATE users
+        SET balance = balance + ?
+        WHERE id=?
+        """,
+        (amount, user_id)
+    )
+
+    db.commit()
+
+
+
+def get_users():
+
+    cursor.execute(
+        "SELECT id, username, balance FROM users"
+    )
+
+    return cursor.fetchall()
