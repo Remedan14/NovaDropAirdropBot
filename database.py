@@ -139,11 +139,36 @@ def get_user_wallet(user_id):
 
     cursor.execute(
         """
-        SELECT usdt_wallet, btc_wallet 
-        FROM users 
+        def check_referred(user_id):
+
+    cursor.execute(
+        "SELECT referrer FROM users WHERE id=?",
+        (user_id,)
+    )
+
+    result = cursor.fetchone()
+
+    if result:
+        return result[0]
+
+    return None
+
+
+
+def set_referral_reward(user_id):
+
+    cursor.execute(
+        """
+        UPDATE users
+        SET referrer=NULL
         WHERE id=?
         """,
         (user_id,)
     )
 
-    return cursor.fetchone()
+    db.commit()
+        SELECT usdt_wallet, btc_wallet 
+        FROM users 
+        WHERE id=?
+        """,
+        (user_id,)
