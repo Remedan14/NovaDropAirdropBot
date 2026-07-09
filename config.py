@@ -1,4 +1,7 @@
 import os
 
 TOKEN = os.getenv("TOKEN")
-ADMIN_ID = int(os.getenv("ADMIN_ID"))
+
+# Safely get and convert the ADMIN_ID
+admin_id_raw = os.getenv("ADMIN_ID")
+ADMIN_ID = int(admin_id_raw) if admin_id_raw else None
