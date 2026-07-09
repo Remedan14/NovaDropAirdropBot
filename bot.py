@@ -275,6 +275,124 @@ def broadcast(message):
                 user[0],
                 msg
             )
+            @bot.message_handler(commands=['admin'])
+def admin_panel(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    kb = types.InlineKeyboardMarkup()
+
+    kb.add(
+        types.InlineKeyboardButton(
+            "📢 Broadcast",
+            callback_data="broadcast"
+        )
+    )
+
+    kb.add(
+        types.InlineKeyboardButton(
+            "💸 Pending Withdrawals",
+            callback_data="withdrawals"
+        )
+    )
+
+    bot.send_message(
+        message.chat.id,
+        "👑 Admin Panel",
+        reply_markup=kb
+    )
+
+
+
+@bot.callback_query_handler(
+func=lambda c:c.data=="withdrawals"
+)
+def pending_withdrawals(call):
+
+    if call.from_user.id != ADMIN_ID:
+        return
+
+    withdrawals = get_pending_withdrawals()
+
+    if not withdrawals:
+        bot.send_message(
+            call.message.chat.id,
+            "No pending withdrawals"
+        )
+        return
+
+
+    for w in withdrawals:
+
+        kb = types.InlineKeyboardMarkup()
+
+        kb.add(
+            types.InlineKeyboardButton(
+                "✅ Approve",
+                callback_data=f"approve_{w[0]}"
+            ),
+            types.InlineKeyboardButton(
+                "❌ Reject",
+                callback_data=f"reject_{w[0]}"
+            )
+        )
+
+
+        bot.send_message(
+            call.message.chat.id,
+            f"""
+💸 Withdrawal
+
+ID: {w[0]}
+User: {w[1]}
+Amount: ${w[2]}
+Status: {w[3]}
+""",
+            reply_markup=kb
+        )
+
+
+
+@bot.callback_query_handler(
+func=lambda c:c.data.startswith("approve_") or c.data.startswith("reject_")
+)
+def withdrawal_action(call):
+
+    if call.from_user.id != ADMIN_ID:
+        return
+
+
+    data = call.data.split("_")
+
+    action = data[0]
+    wid = data[1]
+
+
+    if action=="approve":
+
+        update_withdrawal(
+            wid,
+            "approved"
+        )
+
+        bot.send_message(
+            call.message.chat.id,
+            "✅ Withdrawal approved"
+        )
+
+
+    elif action=="reject":
+
+        update_withdrawal(
+            wid,
+            "rejected"
+        )
+
+        bot.send_message(
+            call.message.chat.id,
+            "❌ Withdrawal rejected"
+        )
         except:
             pass
 
