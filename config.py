@@ -1,12 +1,6 @@
 import os
 
 # Telegram Bot Token
-BOT_TOKEN = os.getenv("8368139680:AAH0sL1kd01lMzSePuiiugO02xg2Y4NjIIM")
-
-# Admin Telegram User IDs
-ADMINS = [
-    
-]
 
 # Required Telegram Channels
 CHANNELS = [
