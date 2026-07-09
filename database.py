@@ -65,3 +65,36 @@ def add_balance(user_id, amount):
     )
 
     db.commit()
+def save_wallet(user_id, usdt, btc):
+
+    cursor.execute(
+        """
+        UPDATE users 
+        SET usdt_wallet=?, btc_wallet=?
+        WHERE id=?
+        """,
+        (usdt, btc, user_id)
+    )
+
+    db.commit()
+
+
+def get_all_users():
+
+    cursor.execute("SELECT id FROM users")
+
+    return cursor.fetchall()
+
+
+def get_user_wallet(user_id):
+
+    cursor.execute(
+        """
+        SELECT usdt_wallet, btc_wallet 
+        FROM users 
+        WHERE id=?
+        """,
+        (user_id,)
+    )
+
+    return cursor.fetchone()
