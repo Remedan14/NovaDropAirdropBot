@@ -1,6 +1,8 @@
-TOKEN = "8368139680:AAH0sL1kd01lMzSePuiiugO02xg2Y4NjIIM"
+import os
 
-ADMIN_ID = 8786492721
+TOKEN = os.getenv("TOKEN")
+
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
 CHANNELS = [
     "@NovaDropAirdrop",
