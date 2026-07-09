@@ -1,6 +1,6 @@
-import os
+TOKEN = "8368139680:AAH0sL1kd01lMzSePuiiugO02xg2Y4NjIIM"
 
-BOT_TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = 8687492721
 
 CHANNELS = [
     "@NovaDropAirdrop",
@@ -8,9 +8,3 @@ CHANNELS = [
 ]
 
 REFERRAL_REWARD = 0.10
-
-MIN_WITHDRAW = 5.00
-
-ADMINS = [
-    123456789
-]
