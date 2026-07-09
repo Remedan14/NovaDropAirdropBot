@@ -426,6 +426,41 @@ def users_list(message):
     bot.send_message(
         message.chat.id,
         text
+    )@bot.message_handler(commands=['addbalance'])
+def add_user_balance(message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    try:
+        parts = message.text.split()
+
+        user_id = int(parts[1])
+        amount = float(parts[2])
+
+        add_balance(
+            user_id,
+            amount
+        )
+
+        bot.send_message(
+            message.chat.id,
+            f"✅ ${amount} added to user {user_id}"
+        )
+
+    except:
+
+        bot.send_message(
+            message.chat.id,
+            """
+❌ Format sirrii miti
+
+Fakkeenya:
+/addbalance USER_ID AMOUNT
+
+Fakkeenya:
+/addbalance 123456789 5
+"""
     )
         except:
             pass
