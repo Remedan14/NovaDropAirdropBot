@@ -392,6 +392,18 @@ def withdrawal_action(call):
         bot.send_message(
             call.message.chat.id,
             "❌ Withdrawal rejected"
+            referrer = check_referred(call.from_user.id)
+
+if referrer:
+
+    add_balance(
+        referrer,
+        0.10
+    )
+
+    set_referral_reward(
+        call.from_user.id
+        )
         )
         except:
             pass
