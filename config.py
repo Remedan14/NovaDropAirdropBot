@@ -4,7 +4,7 @@ import os
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 # Telegram User ID kee
-ADMIN_ID = 8786492721
+ADMIN_ID = 8786492127
 
 # Mandatory channels
 CHANNELS = [
