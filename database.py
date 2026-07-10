@@ -1,208 +1,88 @@
 import sqlite3
+from config import DATABASE_NAME
 
-db = sqlite3.connect(
-    "users.db",
-    check_same_thread=False
-)
+conn = sqlite3.connect(DATABASE_NAME, check_same_thread=False)
+cursor = conn.cursor()
 
-cursor = db.cursor()
-
-
+# Users table
 cursor.execute("""
-CREATE TABLE IF NOT EXISTS users(
-id INTEGER PRIMARY KEY,
-username TEXT,
-balance REAL DEFAULT 0,
-referrer INTEGER,
-usdt_wallet TEXT,
-btc_wallet TEXT
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY,
+    username TEXT,
+    first_name TEXT,
+    balance REAL DEFAULT 0,
+    referrals INTEGER DEFAULT 0,
+    referred_by INTEGER,
+    usdt_wallet TEXT,
+    btc_wallet TEXT,
+    joined INTEGER DEFAULT 0
 )
 """)
 
-db.commit()
+# Withdrawal requests
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS withdrawals (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    wallet_type TEXT,
+    wallet_address TEXT,
+    amount REAL,
+    status TEXT DEFAULT 'Pending'
+)
+""")
+
+conn.commit()
 
 
-def add_user(user_id, username, referrer=None):
-
+def add_user(user_id, username, first_name, referred_by=None):
     cursor.execute(
-        "SELECT id FROM users WHERE id=?",
+        "SELECT user_id FROM users WHERE user_id=?",
         (user_id,)
     )
 
-    if not cursor.fetchone():
-
-        cursor.execute(
-        """
+    if cursor.fetchone() is None:
+        cursor.execute("""
         INSERT INTO users
-        (id,username,referrer)
-        VALUES(?,?,?)
+        (user_id, username, first_name, referred_by)
+        VALUES (?,?,?,?)
         """,
-        (user_id,username,referrer)
-        )
-
-        db.commit()
+        (user_id, username, first_name, referred_by))
+        conn.commit()
 
 
 def get_balance(user_id):
-
     cursor.execute(
-        "SELECT balance FROM users WHERE id=?",
+        "SELECT balance FROM users WHERE user_id=?",
         (user_id,)
     )
+    row = cursor.fetchone()
 
-    return cursor.fetchone()[0]
+    if row:
+        return row[0]
+
+    return 0
 
 
-def add_balance(user_id, amount):
+def add_referral_reward(user_id, reward):
+    cursor.execute("""
+    UPDATE users
+    SET balance = balance + ?,
+        referrals = referrals + 1
+    WHERE user_id=?
+    """, (reward, user_id))
+    conn.commit()
 
-    cursor.execute(
-        """
-        UPDATE users
-        SET balance=balance+?
-        WHERE id=?
-        """,
-        (amount,user_id)
-    )
 
-    db.commit()
-def save_wallet(user_id, usdt, btc):
-
-    cursor.execute(
-        """
-        UPDATE users 
-        SET usdt_wallet=?, btc_wallet=?
-        WHERE id=?
-        """,
-        (usdt, btc, user_id)
-    )
-
-    db.commit()
-def add_withdrawal(user_id, amount):
-
-    cursor.execute(
-        """
-        CREATE TABLE IF NOT EXISTS withdrawals(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER,
-        amount REAL,
-        status TEXT DEFAULT 'pending'
+def save_wallet(user_id, wallet_type, wallet):
+    if wallet_type == "USDT":
+        cursor.execute(
+            "UPDATE users SET usdt_wallet=? WHERE user_id=?",
+            (wallet, user_id)
         )
-        """
-    )
+    else:
+        cursor.execute(
+            "UPDATE users SET btc_wallet=? WHERE user_id=?",
+            (wallet, user_id)
+        )
 
-    cursor.execute(
-        """
-        INSERT INTO withdrawals(user_id, amount)
-        VALUES(?,?)
-        """,
-        (user_id, amount)
-    )
-
-    db.commit()
-
-
-
-def get_pending_withdrawals():
-
-    cursor.execute(
-        """
-        SELECT * FROM withdrawals
-        WHERE status='pending'
-        """
-    )
-
-    return cursor.fetchall()
-
-
-
-def update_withdrawal(wid, status):
-
-    cursor.execute(
-        """
-        UPDATE withdrawals
-        SET status=?
-        WHERE id=?
-        """,
-        (status,wid)
-    )
-
-    db.commit()
-
-def get_all_users():
-
-    cursor.execute("SELECT id FROM users")
-
-    return cursor.fetchall()
-
-
-def get_user_wallet(user_id):
-
-    cursor.execute(
-        """
-        def check_referred(user_id):
-
-    cursor.execute(
-        "SELECT referrer FROM users WHERE id=?",
-        (user_id,)
-    )
-
-    result = cursor.fetchone()
-
-    if result:
-        return result[0]
-
-    return None
-
-
-
-def set_referral_reward(user_id):
-
-    cursor.execute(
-        """
-        UPDATE users
-        SET referrer=NULL
-        WHERE id=?
-        """,
-        (user_id,)
-    )
-
-    db.commit()
-        SELECT usdt_wallet, btc_wallet 
-        FROM users 
-        WHERE id=?
-        """,
-        (user_id,)
-        def add_balance(user_id, amount):
-
-    cursor.execute(
-        """
-        UPDATE users
-        SET balance = balance + ?
-        WHERE id=?
-        """,
-        (amount, user_id)
-    )
-
-    db.commit()
-
-
-
-def get_users():
-
-    cursor.execute(
-        "SELECT id, username, balance FROM users"
-    )
-
-    return cursor.fetchall()
-def get_withdrawal(wid):
-
-    cursor.execute(
-        """
-        SELECT user_id, amount
-        FROM withdrawals
-        WHERE id=?
-        """,
-        (wid,)
-    )
-
-    return cursor.fetchone()
+    conn.commit()
