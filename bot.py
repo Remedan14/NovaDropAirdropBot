@@ -1,525 +1,327 @@
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
 
-import telebot
-from telebot import types
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    CallbackQueryHandler,
+    ContextTypes
+)
 
-from config import *
-from database import *
+from config import (
+    BOT_TOKEN,
+    CHANNELS,
+    REFERRAL_REWARD
+)
+
+from database import (
+    add_user,
+    get_balance,
+    add_referral_reward
+)
 
 
-bot = telebot.TeleBot(TOKEN)
+async def check_join(bot, user_id):
+    """
+    Check whether the user joined all required channels.
+    """
 
-
-
-def joined(user_id):
-
-    for ch in CHANNELS:
+    for channel in CHANNELS:
 
         try:
-            status = bot.get_chat_member(
-                ch,
-                user_id
-            ).status
 
-            if status not in [
-                "member",
-                "administrator",
-                "creator"
+            member = await bot.get_chat_member(
+                channel,
+                user_id
+            )
+
+            if member.status in [
+                "left",
+                "kicked"
             ]:
                 return False
 
         except:
+
             return False
 
     return True
+    from telegram import (
+    ReplyKeyboardMarkup,
+    KeyboardButton
+)
+
+MAIN_MENU = ReplyKeyboardMarkup(
+    [
+        ["💰 Balance", "👥 Referrals"],
+        ["📋 Tasks", "👛 Wallet"],
+        ["💸 Withdraw"]
+    ],
+    resize_keyboard=True
+)
 
 
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-@bot.message_handler(commands=['start'])
-def start(message):
+    user = update.effective_user
 
-    user_id = message.from_user.id
+    referred_by = None
 
-    args = message.text.split()
-
-    ref = None
-
-    if len(args)>1:
-        ref = args[1]
-
+    if context.args:
+        try:
+            referred_by = int(context.args[0])
+        except:
+            referred_by = None
 
     add_user(
-        user_id,
-        message.from_user.username,
-        ref
+        user.id,
+        user.username,
+        user.first_name,
+        referred_by
+    )
+
+    joined = await check_join(
+        context.bot,
+        user.id
+    )
+
+    if not joined:
+
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "📢 Channel 1",
+                        url="https://t.me/NovaDropAirdrop"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "📢 Channel 2",
+                        url="https://t.me/NovaDropAirdrop2"
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "✅ Verify",
+                        callback_data="verify"
+                    )
+                ]
+            ]
+        )
+
+        await update.message.reply_text(
+            "Join both Telegram channels first.",
+            reply_markup=keyboard
+        )
+
+        return
+
+    await update.message.reply_text(
+        f"Welcome {user.first_name}!\n\n"
+        f"Earn ${REFERRAL_REWARD:.2f} for every valid referral.",
+        reply_markup=MAIN_MENU
+        )
+  async def verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    query = update.callback_query
+    await query.answer()
+
+    user = query.from_user
+
+    joined = await check_join(
+        context.bot,
+        user.id
+    )
+
+    if not joined:
+
+        await query.message.reply_text(
+            "❌ You haven't joined all required channels."
+        )
+
+        return
+
+    if context.user_data.get("verified"):
+
+        await query.message.reply_text(
+            "✅ You are already verified."
+        )
+
+        return
+
+    context.user_data["verified"] = True
+
+    if context.user_data.get("referrer"):
+
+        add_referral_reward(
+            context.user_data["referrer"],
+            REFERRAL_REWARD
+        )
+
+    await query.message.reply_text(
+        "✅ Verification successful!\n\n"
+        "Welcome to NovaDrop Airdrop.",
+        reply_markup=MAIN_MENU
+        )
+      app.add_handler(
+    CallbackQueryHandler(
+        verify,
+        pattern="verify"
+    )
+    )
+from telegram.ext import MessageHandler, filters
+
+
+async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    amount = get_balance(user_id)
+
+    await update.message.reply_text(
+        f"💰 Your Balance\n\n"
+        f"USD: ${amount:.2f}"
     )
 
 
-    if not joined(user_id):
+async def referral(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-        kb=types.InlineKeyboardMarkup()
+    bot = await context.bot.get_me()
 
-        for ch in CHANNELS:
-            kb.add(
-            types.InlineKeyboardButton(
-            "Join "+ch,
-            url="https://t.me/"+ch.replace("@","")
-            ))
+    link = (
+        f"https://t.me/{bot.username}"
+        f"?start={update.effective_user.id}"
+    )
 
-        kb.add(
-        types.InlineKeyboardButton(
-        "✅ Verify",
-        callback_data="verify"
-        ))
-
-        bot.send_message(
-        message.chat.id,
-        "Join both channels first:",
-        reply_markup=kb
-        )
-
-    else:
-        menu(message)
+    await update.message.reply_text(
+        f"👥 Your Referral Link\n\n"
+        f"{link}\n\n"
+        f"Reward: ${REFERRAL_REWARD:.2f} "
+        f"for every valid referral."
+    )
 
 
+async def wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-@bot.callback_query_handler(
-func=lambda c:c.data=="verify"
-)
-def verify(call):
-
-    if joined(call.from_user.id):
-
-        menu(call.message)
-
-    else:
-        bot.answer_callback_query(
-        call.id,
-        "You didn't join all channels"
-        )
-
-
-
-def menu(message):
-
-    kb=types.ReplyKeyboardMarkup(
+    keyboard = ReplyKeyboardMarkup(
+        [
+            ["USDT (TRC20)"],
+            ["Bitcoin"],
+            ["🔙 Back"]
+        ],
         resize_keyboard=True
     )
 
-    kb.add(
-    "💰 Balance",
-    "👥 Referral"
-    )
+    context.user_data["wallet_menu"] = True
 
-    kb.add(
-    "💳 Wallet",
-    "💸 Withdraw"
-    )
-
-    bot.send_message(
-    message.chat.id,
-    "Welcome NovaDrop 🚀",
-    reply_markup=kb
+    await update.message.reply_text(
+        "Select wallet type.",
+        reply_markup=keyboard
     )
 
 
+async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
-@bot.message_handler(
-func=lambda m:m.text=="💰 Balance"
+    amount = get_balance(update.effective_user.id)
+
+    if amount < MIN_WITHDRAW:
+
+        await update.message.reply_text(
+            f"❌ Minimum withdrawal is "
+            f"${MIN_WITHDRAW:.2f}"
+        )
+
+        return
+
+    await update.message.reply_text(
+        "Enter your withdrawal amount."
+    )
+
+    context.user_data["withdraw"] = True
+from config import BOT_TOKEN, ADMIN_ID
+from database import (
+    add_user,
+    get_user,
+    save_wallet,
+    create_withdrawal
 )
-def balance(message):
+async def usdt_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
 
-    bal=get_balance(
-    message.from_user.id
-    )
+    if not context.args:
+        await update.message.reply_text(
+            "Fakkeenya:\n/usdt wallet_address"
+        )
+        return
 
-    bot.send_message(
-    message.chat.id,
-    f"💰 Balance: ${bal}"
-    )
-
-
-
-@bot.message_handler(
-func=lambda m:m.text=="👥 Referral"
-)
-def referral(message):
-
-    link=f"https://t.me/{bot.get_me().username}?start={message.from_user.id}"
-
-    bot.send_message(
-    message.chat.id,
-    f"""
-Your referral link:
-
-{link}
-
-Reward:
-$0.10 per valid referral
-"""
-)
-
-
-
-@bot.message_handler(
-func=lambda m:m.text=="💳 Wallet"
-)
-def wallet(message):
-
-    bot.send_message(
-    message.chat.id,
-    """
-Send wallet:
-
-Format:
-
-USDT:
-BTC:
-"""
-)
-
-    bot.register_next_step_handler(
-        message,
-        save_wallet
-    )
-
-
-
-def save_wallet(message):
-
-    text=message.text
-
-    bot.send_message(
-    message.chat.id,
-    "✅ Wallet saved"
-    )
-
-
-
-@bot.message_handler(
-func=lambda m:m.text=="💸 Withdraw"
-)
-def withdraw(message):
-
-    bot.send_message(
-    message.chat.id,
-    "Send withdrawal amount:"
-    )
-
-
-
-print("NovaDrop Bot Started")
-
-bot.infinity_polling()
-@bot.message_handler(func=lambda m:m.text=="💳 Wallet")
-def wallet(message):
-
-    bot.send_message(
-        message.chat.id,
-        """
-Wallet galchi:
-
-Fakkeenya:
-
-USDT: Txxxxxxxxxx
-BTC: bc1xxxxxxxx
-"""
-    )
-
-    bot.register_next_step_handler(
-        message,
-        save_wallet_data
-    )
-
-
-def save_wallet_data(message):
-
-    lines = message.text.split("\n")
-
-    usdt = ""
-    btc = ""
-
-    for line in lines:
-        if "USDT" in line:
-            usdt = line.replace("USDT:","").strip()
-
-        if "BTC" in line:
-            btc = line.replace("BTC:","").strip()
-
+    wallet = context.args[0]
 
     save_wallet(
-        message.from_user.id,
-        usdt,
-        btc
+        user_id,
+        "USDT_TRC20",
+        wallet
     )
 
-    bot.send_message(
-        message.chat.id,
-        "✅ Wallet saved successfully"
-        )
-    @bot.message_handler(commands=['broadcast'])
-def broadcast(message):
+    await update.message.reply_text(
+        "✅ USDT TRC20 wallet keessan kuufameera."
+    )
 
-    if message.from_user.id != ADMIN_ID:
+
+async def bitcoin_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if not context.args:
+        await update.message.reply_text(
+            "Fakkeenya:\n/btc wallet_address"
+        )
         return
 
-    msg = message.text.replace(
-        "/broadcast ",
-        ""
+    wallet = context.args[0]
+
+    save_wallet(
+        user_id,
+        "BITCOIN",
+        wallet
     )
 
-    users = get_all_users()
-
-    for user in users:
-        try:
-            bot.send_message(
-                user[0],
-                msg
-            )
-            @bot.message_handler(commands=['admin'])
-def admin_panel(message):
-
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    kb = types.InlineKeyboardMarkup()
-
-    kb.add(
-        types.InlineKeyboardButton(
-            "📢 Broadcast",
-            callback_data="broadcast"
-        )
-    )
-
-    kb.add(
-        types.InlineKeyboardButton(
-            "💸 Pending Withdrawals",
-            callback_data="withdrawals"
-        )
-    )
-
-    bot.send_message(
-        message.chat.id,
-        "👑 Admin Panel",
-        reply_markup=kb
-    )
-
-
-
-@bot.callback_query_handler(
-func=lambda c:c.data=="withdrawals"
+    await update.message.reply_text(
+        "✅ Bitcoin wallet keessan kuufameera."
 )
-def pending_withdrawals(call):
 
-    if call.from_user.id != ADMIN_ID:
-        return
+async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
 
-    withdrawals = get_pending_withdrawals()
-
-    if not withdrawals:
-        bot.send_message(
-            call.message.chat.id,
-            "No pending withdrawals"
+    if not context.args:
+        await update.message.reply_text(
+            "Fakkeenya:\n/withdraw 10"
         )
         return
 
+    amount = context.args[0]
 
-    for w in withdrawals:
-
-        kb = types.InlineKeyboardMarkup()
-
-        kb.add(
-            types.InlineKeyboardButton(
-                "✅ Approve",
-                callback_data=f"approve_{w[0]}"
-            ),
-            types.InlineKeyboardButton(
-                "❌ Reject",
-                callback_data=f"reject_{w[0]}"
-            )
-        )
-
-
-        bot.send_message(
-            call.message.chat.id,
-            f"""
-💸 Withdrawal
-
-ID: {w[0]}
-User: {w[1]}
-Amount: ${w[2]}
-Status: {w[3]}
-""",
-            reply_markup=kb
-        )
-
-
-
-@bot.callback_query_handler(
-func=lambda c:c.data.startswith("approve_") or c.data.startswith("reject_")
-)
-def withdrawal_action(call):
-
-    if call.from_user.id != ADMIN_ID:
-        return
-
-
-    data = call.data.split("_")
-
-    action = data[0]
-    wid = data[1]
-
-
-    if action=="approve":
-
-        update_withdrawal(
-            wid,
-            "approved"
-        )
-
-        bot.send_message(
-            call.message.chat.id,
-            "✅ Withdrawal approved"
-        )
-
-
-    elif action=="reject":
-
-        update_withdrawal(
-            wid,
-            "rejected"
-        )
-
-        bot.send_message(
-            call.message.chat.id,
-            "❌ Withdrawal rejected"
-            referrer = check_referred(call.from_user.id)
-
-if referrer:
-
-    add_balance(
-        referrer,
-        0.10
+    create_withdrawal(
+        user_id,
+        amount
     )
 
-    set_referral_reward(
-        call.from_user.id
-        )
-        )
-        @bot.message_handler(commands=['users'])
-def users_list(message):
-
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    users = get_users()
-
-    text = "👥 Users List\n\n"
-
-    for u in users:
-        text += f"""
-🆔 {u[0]}
-👤 @{u[1]}
-💰 ${u[2]}
-
-"""
-
-    bot.send_message(
-        message.chat.id,
-        text
-    )@bot.message_handler(commands=['addbalance'])
-def add_user_balance(message):
-
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    try:
-        parts = message.text.split()
-
-        user_id = int(parts[1])
-        amount = float(parts[2])
-
-        add_balance(
-            user_id,
-            amount
-        )
-
-        bot.send_message(
-            message.chat.id,
-            f"✅ ${amount} added to user {user_id}"
-        )
-
-    except:
-
-        bot.send_message(
-            message.chat.id,
-            """
-❌ Format sirrii miti
-
-Fakkeenya:
-/addbalance USER_ID AMOUNT
-
-Fakkeenya:
-/addbalance 123456789 5
-"""
+    await update.message.reply_text(
+        "✅ Withdrawal request keessan ergameera.\n"
+        "Admin mirkaneessa."
     )
-    @bot.message_handler(commands=['removebalance'])
-def remove_user_balance(message):
 
-    if message.from_user.id != ADMIN_ID:
-        return
 
-    try:
-        parts = message.text.split()
-
-        user_id = int(parts[1])
-        amount = float(parts[2])
-
-        add_balance(
-            user_id,
-            -amount
+    await context.bot.send_message(
+        chat_id=ADMIN_ID,
+        text=(
+            "🔔 New Withdrawal Request\n\n"
+            f"User ID: {user_id}\n"
+            f"Amount: {amount} USD"
         )
-
-        bot.send_message(
-            message.chat.id,
-            f"✅ ${amount} removed from user {user_id}"
-        )
-
-    except:
-
-        bot.send_message(
-            message.chat.id,
-            """
-if action=="approve":
-
-    data = get_withdrawal(wid)
-
-    if data:
-
-        user_id = data[0]
-        amount = data[1]
-
-        add_balance(
-            user_id,
-            -amount
-        )
-
-        update_withdrawal(
-            wid,
-            "approved"
-        )
-
-        bot.send_message(
-            user_id,
-            f"""
-✅ Your withdrawal approved
-
-💸 Amount:
-${amount}
-"""
-        )
-
-        bot.send_message(
-            call.message.chat.id,
-            "✅ Approved and balance updated"
-        )
-
+    )
+app.add_handler(CommandHandler("usdt", usdt_wallet))
+app.add_handler(CommandHandler("btc", bitcoin_wallet))
+app.add_handler(CommandHandler("withdraw", withdraw))
