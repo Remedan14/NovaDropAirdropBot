@@ -1,7 +1,5 @@
 """
-Telegram bot for NovaDrop Airdrop
-"""
-BOT_TOKEN"8627535451:AAGLeCr63Aug3UJJD9gq5HfygoG-3kqkqYU"
+Telegram bot for NovaDrop AirdqkqYU"
 import logging
 from typing import Optional
 
